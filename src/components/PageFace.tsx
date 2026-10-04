@@ -43,7 +43,7 @@ export function pageBackground(bg: PageBackground): CSSProperties {
         backgroundImage: `repeating-linear-gradient(0deg, ${tint(9)} 0 1px, transparent 1px ${s}px), repeating-linear-gradient(90deg, ${tint(7)} 0 1px, transparent 1px ${s}px), ${KRAFT}`,
       };
     case 'kraft':
-      return { backgroundColor: c, backgroundImage: KRAFT, backgroundSize: '240px 240px' };
+      return { backgroundColor: c, backgroundImage: KRAFT, backgroundSize: `${s * 10}px ${s * 10}px` };
     case 'gingham':
       return {
         backgroundColor: c,

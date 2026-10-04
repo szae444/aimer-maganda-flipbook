@@ -128,7 +128,9 @@ export type StickerKind =
   | 'pin'
   | 'clip'
   | 'check'
-  | 'postmark';
+  | 'postmark'
+  /** An image the user uploaded (see Book.stickers). */
+  | 'custom';
 
 export interface StickerEl extends ElBase {
   type: 'sticker';
@@ -139,6 +141,14 @@ export interface StickerEl extends ElBase {
   diecut: boolean;
   /** Only used by burst and postmark. */
   text: string;
+  /** Image data for custom stickers. */
+  src?: string;
+}
+
+/** A sticker image the user uploaded, kept so it can be placed again. */
+export interface CustomSticker {
+  id: string;
+  src: string;
 }
 
 export type TapePattern = 'solid' | 'stripes' | 'dots' | 'grid' | 'gingham' | 'hearts';
@@ -187,4 +197,6 @@ export interface Book {
   theme: Theme;
   /** pages[0] is the front cover, the last page is the back cover. Always an even count. */
   pages: Page[];
+  /** The user's own uploaded sticker sheet. */
+  stickers: CustomSticker[];
 }

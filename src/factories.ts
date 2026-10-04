@@ -72,6 +72,7 @@ export const STICKER_DEFAULTS: Record<StickerKind, Partial2<StickerEl>> = {
   clip: { color: '@muted', color2: '@ink', diecut: false },
   check: { color: '@accent1', color2: '@ink', diecut: false },
   postmark: { color: '@ink', color2: '@ink', diecut: false, text: 'AIMER · MAGANDA · 2026 · ' },
+  custom: { diecut: true },
 };
 
 export const sticker = (kind: StickerKind, o: Partial2<StickerEl> = {}): StickerEl => ({

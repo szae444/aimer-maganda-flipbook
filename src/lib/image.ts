@@ -10,7 +10,7 @@ export async function fileToCompressedDataUrl(file: File, maxSide = 1600, qualit
     canvas.width = w;
     canvas.height = h;
     canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
-    const type = file.type === 'image/png' && hasAlpha(canvas) ? 'image/png' : 'image/webp';
+    const type = (file.type === 'image/png' || file.type === 'image/svg+xml') && hasAlpha(canvas) ? 'image/png' : 'image/webp';
     return canvas.toDataURL(type, quality);
   } finally {
     URL.revokeObjectURL(url);
@@ -26,10 +26,35 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+/** Checks the whole image (downscaled) for any transparent pixels. */
 function hasAlpha(canvas: HTMLCanvasElement) {
-  const { data } = canvas.getContext('2d')!.getImageData(0, 0, Math.min(64, canvas.width), Math.min(64, canvas.height));
+  const probe = document.createElement('canvas');
+  probe.width = Math.min(96, canvas.width);
+  probe.height = Math.min(96, canvas.height);
+  const ctx = probe.getContext('2d')!;
+  ctx.drawImage(canvas, 0, 0, probe.width, probe.height);
+  const { data } = ctx.getImageData(0, 0, probe.width, probe.height);
   for (let i = 3; i < data.length; i += 4) if (data[i] < 250) return true;
   return false;
+}
+
+/**
+ * Stickers keep their transparency (PNG) so cut-outs stay cut out; opaque images become
+ * smaller WebP. Capped at 800px — plenty for a sticker, light on phone memory.
+ */
+export async function fileToStickerDataUrl(file: File): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await loadImage(url);
+    const scale = Math.min(1, 800 / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return hasAlpha(canvas) ? canvas.toDataURL('image/png') : canvas.toDataURL('image/webp', 0.9);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 export async function imageAspect(src: string) {

@@ -10,10 +10,10 @@ import type {
 } from '../types';
 import { actions, findEl, findPage, spreadPages, turnedForPage, useStore } from '../store';
 import { COLOR_TOKENS, FONT_ROLES, PAGE_SIZES, PALETTE_PRESETS, colorCss } from '../theme';
-import { fileToCompressedDataUrl, extractPalette, paletteToTokens } from '../lib/image';
+import { fileToCompressedDataUrl, extractPalette, imageAspect, paletteToTokens } from '../lib/image';
 import { pickFile } from '../lib/gesture';
 import { downloadBook, readBookFile, clearSaved } from '../lib/persist';
-import { STICKER_KINDS, StickerSvg } from './elements/Stickers';
+import { StickerSheet } from './StickerSheet';
 import { Icon } from './Icon';
 import { ColorField, Field, FontField, NumberField, Section, Segmented, Slider, TextArea, TextInput, Toggle, TokenSwatch } from './ui';
 import { bookControl } from './Book';
@@ -197,21 +197,26 @@ function ElementPanel() {
 
       {el.type === 'sticker' && (
         <Section title="Sticker">
-          <div className="sticker-grid">
-            {STICKER_KINDS.map((k) => (
-              <button key={k.kind} title={k.label} className={`sticker-opt${el.kind === k.kind ? ' is-on' : ''}`} onClick={() => S({ kind: k.kind })}>
-                <StickerSvg kind={k.kind} fill={colorCss(el.color)} ink={colorCss(el.color2)} text="" />
-              </button>
-            ))}
-          </div>
-          <div className="row">
-            <Field label="Color">
-              <ColorField value={el.color} onChange={(v, l) => S({ color: v }, l)} />
-            </Field>
-            <Field label="Second color">
-              <ColorField value={el.color2} onChange={(v, l) => S({ color2: v }, l)} />
-            </Field>
-          </div>
+          <StickerSheet
+            selected={{ kind: el.kind, src: el.src }}
+            colors={{ color: el.color, color2: el.color2 }}
+            onPick={async ({ kind, src }) => {
+              if (kind !== 'custom') return S({ kind });
+              // swap to an uploaded image, keeping its proportions within the current width
+              const ratio = src ? await imageAspect(src) : 1;
+              S({ kind, src, h: Math.round(el.w / ratio) });
+            }}
+          />
+          {el.kind !== 'custom' && (
+            <div className="row">
+              <Field label="Color">
+                <ColorField value={el.color} onChange={(v, l) => S({ color: v }, l)} />
+              </Field>
+              <Field label="Second color">
+                <ColorField value={el.color2} onChange={(v, l) => S({ color2: v }, l)} />
+              </Field>
+            </div>
+          )}
           <Toggle checked={el.diecut} onChange={(v) => S({ diecut: v })} label="Die-cut white edge" />
           {(el.kind === 'burst' || el.kind === 'postmark') && (
             <Field label="Sticker text" wide>
@@ -367,7 +372,10 @@ function PagePanel() {
   if (!page) return null;
   const bg = page.background;
   const setBg = (patch: Partial<typeof bg>, live = false) => {
-    const recipe = (p: { background: typeof bg }) => Object.assign(p.background, patch);
+    // block body: an Immer recipe must not return a value while also editing the draft
+    const recipe = (p: { background: typeof bg }) => {
+      Object.assign(p.background, patch);
+    };
     if (live) useStore.getState().live((b) => recipe(findPage(b, id)!));
     else actions.updatePage(id, recipe);
   };

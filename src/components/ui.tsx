@@ -200,17 +200,17 @@ export function ColorField({
                 title={t.label}
                 className={`swatch${value === `@${t.key}` ? ' is-on' : ''}`}
                 style={{ background: `var(--c-${t.key})` }}
-                onClick={() => onChange(`@${t.key}`, false)}
+                onClick={() => (onChange(`@${t.key}`, false), setOpen(false))}
               />
             ))}
-            {allowNone && <button type="button" title="None" className={`swatch is-none${value ? '' : ' is-on'}`} onClick={() => onChange('', false)} />}
+            {allowNone && <button type="button" title="None" className={`swatch is-none${value ? '' : ' is-on'}`} onClick={() => (onChange('', false), setOpen(false))} />}
           </div>
           {extracted.length > 0 && (
             <>
               <div className="popover__label">From your reference image</div>
               <div className="swatches">
                 {extracted.map((c) => (
-                  <button key={c} type="button" title={c} className={`swatch${value === c ? ' is-on' : ''}`} style={{ background: c }} onClick={() => onChange(c, false)} />
+                  <button key={c} type="button" title={c} className={`swatch${value === c ? ' is-on' : ''}`} style={{ background: c }} onClick={() => (onChange(c, false), setOpen(false))} />
                 ))}
               </div>
             </>

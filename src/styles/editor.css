@@ -1004,6 +1004,113 @@ button.swatch:hover {
   display: block;
 }
 
+.sticker-sheet {
+  display: grid;
+  gap: var(--s2);
+}
+
+.sticker-sheet .popover__label {
+  margin: var(--s1) 0 0;
+}
+
+.sticker-sheet .hint {
+  margin: 0;
+}
+
+.sticker-upload {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1.5px dashed var(--card-line);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.sticker-upload:hover {
+  border-color: var(--c-ink);
+  transform: none;
+}
+
+.sticker-opt.is-custom {
+  position: relative;
+  padding: 0;
+}
+
+.sticker-opt.is-custom:hover {
+  transform: none;
+}
+
+.sticker-opt__pick {
+  width: 100%;
+  height: 100%;
+  padding: 6px;
+  border-radius: 6px;
+}
+
+.sticker-opt__pick:hover {
+  background: var(--card-soft);
+}
+
+.sticker-opt__pick img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.sticker-opt__remove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--c-ink);
+  color: var(--c-paper);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.sticker-opt.is-custom:hover .sticker-opt__remove,
+.sticker-opt__remove:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .sticker-opt__remove {
+    opacity: 0.85;
+  }
+}
+
+.dock__close {
+  position: absolute;
+  z-index: 3;
+  top: 6px;
+  right: 6px;
+  width: 30px !important;
+  height: 30px !important;
+  background: var(--card);
+}
+
+/* keep the first heading clear of the close button */
+.dock__drawer .sticker-sheet > .popover__label:first-child {
+  padding-right: 36px;
+}
+
+.dock__close:hover {
+  background: var(--card-soft);
+}
+
+.dock__drawer {
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+}
+
 /* ---------------- touch ---------------- */
 
 .xf__handle,
@@ -1074,8 +1181,13 @@ button.swatch:hover {
 
 @media (max-width: 900px) {
   .mode-edit .app__main {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto;
+    /* minmax(0, …): wide panel content must never stretch the layout past the screen */
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .inspector {
+    min-width: 0;
   }
 
   .dock {

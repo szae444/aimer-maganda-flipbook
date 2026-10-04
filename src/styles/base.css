@@ -237,6 +237,33 @@ button:disabled {
   opacity: 0.9;
 }
 
+/* the one action people look for: always visible while editing */
+.download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  margin-left: var(--s2);
+  padding: 0 14px;
+  border-radius: 6px;
+  background: var(--c-accent2);
+  color: var(--c-ink);
+  font-family: var(--ui-mono);
+  font-size: var(--t-sm);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: filter 0.2s, transform 0.2s var(--ease);
+}
+
+.download-btn:hover {
+  filter: brightness(1.08);
+}
+
+.download-btn:active {
+  transform: scale(0.96);
+}
+
 /* Read / Edit as two index tabs */
 .modeswitch {
   display: flex;
@@ -282,7 +309,7 @@ button:disabled {
 }
 
 .mode-edit .app__main {
-  grid-template-columns: auto 1fr minmax(300px, 340px);
+  grid-template-columns: auto minmax(0, 1fr) minmax(300px, 340px);
 }
 
 .app__stage {
@@ -530,6 +557,20 @@ button:disabled {
   .savestate,
   .wordmark__f {
     display: none;
+  }
+  /* editing needs the room: the logo steps aside, Download stays */
+  .mode-edit .wordmark {
+    display: none;
+  }
+  .mode-edit .topbar {
+    justify-content: flex-end;
+  }
+  .download-btn {
+    margin-left: 2px;
+    padding: 0 10px;
+  }
+  .topbar__tools {
+    gap: 0;
   }
   .topbar__right {
     gap: var(--s2);

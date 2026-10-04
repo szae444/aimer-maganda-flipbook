@@ -212,6 +212,22 @@
   filter: drop-shadow(0 2px 2px rgba(40, 25, 10, 0.3));
 }
 
+/* uploaded stickers */
+.el-sticker.is-custom img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 2px rgba(40, 25, 10, 0.25));
+}
+
+/* die-cut edge traced around the image's own shape (works best with transparent PNGs) */
+.el-sticker.is-custom.is-diecut img {
+  filter: drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff)
+    drop-shadow(0 2px 2px rgba(40, 25, 10, 0.3));
+}
+
 /* ---------------- washi tape ---------------- */
 
 .el-tape {

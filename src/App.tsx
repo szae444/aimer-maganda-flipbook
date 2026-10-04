@@ -1,18 +1,17 @@
 import { useEffect, useState } from 'react';
-import type { ElType, Page, StickerKind } from './types';
+import type { ElType, Page } from './types';
 import { actions, findEl, spreadPages, turnedForPage, useStore } from './store';
 import { applyTheme, ensureFonts } from './theme';
 import { makeEl, photo as makePhoto, sticker as makeSticker } from './factories';
 import { fileToCompressedDataUrl, imageAspect } from './lib/image';
 import { pickFile } from './lib/gesture';
-import { saveBookSoon } from './lib/persist';
+import { downloadBook, saveBookSoon } from './lib/persist';
 import { EDITOR_ENABLED } from './config';
 import { Book, bookControl } from './components/Book';
 import { Inspector, useEditablePage } from './components/Inspector';
 import { PageFace } from './components/PageFace';
 import { Icon } from './components/Icon';
-import { STICKER_KINDS, StickerSvg } from './components/elements/Stickers';
-import { colorCss } from './theme';
+import { StickerSheet, type StickerPick } from './components/StickerSheet';
 
 export default function App() {
   const book = useStore((s) => s.book);
@@ -87,6 +86,14 @@ function Header() {
             <button className="icon-btn" title="Redo (Ctrl+Shift+Z)" disabled={!canRedo} onClick={() => useStore.getState().redo()}>
               <Icon name="redo" />
             </button>
+            <button
+              className="download-btn"
+              title="Download your book (book.json) — keep it as a backup or publish it"
+              onClick={() => downloadBook(useStore.getState().book)}
+            >
+              <Icon name="download" size={16} />
+              <span>Download</span>
+            </button>
           </div>
         )}
         {EDITOR_ENABLED && (
@@ -121,6 +128,21 @@ function AddDock() {
   const theme = useStore((s) => s.book.theme);
   const [stickers, setStickers] = useState(false);
 
+  // the sticker drawer closes with Escape or a click anywhere outside the dock
+  useEffect(() => {
+    if (!stickers) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setStickers(false);
+    const onDown = (e: PointerEvent) => {
+      if (!(e.target as HTMLElement).closest('.dock')) setStickers(false);
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('pointerdown', onDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pointerdown', onDown);
+    };
+  }, [stickers]);
+
   const place = <T extends { w: number; h: number; x: number; y: number; rot: number }>(el: T): T => ({
     ...el,
     x: Math.round(theme.pageWidth / 2 - el.w / 2 + (Math.random() * 40 - 20)),
@@ -146,8 +168,15 @@ function AddDock() {
     actions.addEl(pageId, place(el));
   };
 
-  const addSticker = (kind: StickerKind) => {
-    actions.addEl(pageId, place(makeSticker(kind)));
+  const addSticker = async ({ kind, src }: StickerPick) => {
+    const el = makeSticker(kind, src ? { src } : {});
+    if (src) {
+      // keep the uploaded image's proportions
+      const ratio = await imageAspect(src);
+      el.w = 130;
+      el.h = Math.round(130 / ratio);
+    }
+    actions.addEl(pageId, place(el));
   };
 
   return (
@@ -160,18 +189,11 @@ function AddDock() {
         </button>
       ))}
       {stickers && (
-        <div className="dock__drawer">
-          <div className="popover__label">Sticker sheet</div>
-          <div className="sticker-grid">
-            {STICKER_KINDS.map((k) => {
-              const d = makeSticker(k.kind);
-              return (
-                <button key={k.kind} className="sticker-opt" title={k.label} onClick={() => addSticker(k.kind)}>
-                  <StickerSvg kind={k.kind} fill={colorCss(d.color)} ink={colorCss(d.color2)} text="" />
-                </button>
-              );
-            })}
-          </div>
+        <div className="dock__drawer" role="dialog" aria-label="Stickers">
+          <button className="icon-btn dock__close" title="Close" onClick={() => setStickers(false)}>
+            <Icon name="close" size={16} />
+          </button>
+          <StickerSheet onPick={addSticker} />
         </div>
       )}
     </aside>

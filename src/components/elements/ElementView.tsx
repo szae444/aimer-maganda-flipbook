@@ -19,6 +19,12 @@ export const ElementView = memo(function ElementView({ el, editing, editable, on
     case 'photo':
       return <PhotoView el={el} editable={editable} />;
     case 'sticker':
+      if (el.kind === 'custom')
+        return (
+          <div className={`el-sticker is-custom${el.diecut ? ' is-diecut' : ''}`}>
+            {el.src ? <img src={el.src} alt="" draggable={false} /> : <div className="el-photo__empty" />}
+          </div>
+        );
       return (
         <div className={`el-sticker${el.diecut ? ' is-diecut' : ''}`}>
           <StickerSvg kind={el.kind} fill={colorCss(el.color)} ink={colorCss(el.color2)} text={el.text} diecut={el.diecut} />
@@ -36,6 +42,25 @@ export const ElementView = memo(function ElementView({ el, editing, editable, on
 });
 
 /* ------------------------------------------------------------------ */
+
+/**
+ * The characters actually typed, with line breaks. Unlike innerText this ignores CSS
+ * (text-transform: uppercase must not turn "hello" into a saved "HELLO").
+ */
+function readPlainText(node: Node): string {
+  let out = '';
+  node.childNodes.forEach((child, i) => {
+    if (child.nodeType === Node.TEXT_NODE) out += child.nodeValue ?? '';
+    else if (child.nodeName === 'BR') out += '\n';
+    else {
+      // some browsers wrap new lines in <div>/<p> while editing
+      const block = /^(DIV|P)$/.test(child.nodeName);
+      if (block && i > 0 && !out.endsWith('\n')) out += '\n';
+      out += readPlainText(child);
+    }
+  });
+  return out;
+}
 
 function Editable({
   value,
@@ -68,7 +93,7 @@ function Editable({
   // The DOM owns the text while typing; otherwise mirror external changes (undo, inspector).
   useLayoutEffect(() => {
     const node = ref.current;
-    if (node && !editing && node.innerText !== value) node.innerText = value;
+    if (node && !editing && readPlainText(node) !== value) node.textContent = value;
   }, [value, editing]);
 
   return (
@@ -79,7 +104,7 @@ function Editable({
       contentEditable={editing ? 'plaintext-only' : false}
       suppressContentEditableWarning
       spellCheck={false}
-      onBlur={(e) => onCommit(e.currentTarget.innerText.replace(/\n$/, ''))}
+      onBlur={(e) => onCommit(readPlainText(e.currentTarget).replace(/\n$/, ''))}
       onKeyDown={(e) => {
         if (e.key === 'Escape') (e.currentTarget as HTMLElement).blur();
         e.stopPropagation();
@@ -102,7 +127,8 @@ function TextView({ el, editing, onCommit }: { el: TextEl; editing: boolean; onC
     textTransform: el.upper ? 'uppercase' : 'none',
   };
   return (
-    <div className="el-text">
+    // alignment on the wrapper too: highlighted text is inline, where text-align alone does nothing
+    <div className="el-text" style={{ textAlign: el.align }}>
       <Editable
         value={el.text}
         editing={editing}

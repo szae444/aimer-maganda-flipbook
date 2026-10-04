@@ -10,6 +10,7 @@ export function createDefaultBook(): Book {
   return {
     version: 1,
     title: 'Aimer Maganda Flipbook',
+    stickers: [],
     theme: {
       colors: { ...PALETTE_PRESETS[0].colors },
       fonts: { ...DEFAULT_FONTS },

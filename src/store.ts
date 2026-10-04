@@ -238,4 +238,19 @@ export const actions = {
   resetBook() {
     S().replaceBook(createDefaultBook());
   },
+
+  /** Adds an uploaded image to the custom sticker sheet; returns its id. */
+  addCustomSticker(src: string) {
+    const id = uid('s');
+    S().commit((b) => {
+      (b.stickers ??= []).push({ id, src });
+    });
+    return id;
+  },
+
+  removeCustomSticker(id: string) {
+    S().commit((b) => {
+      b.stickers = (b.stickers ?? []).filter((s) => s.id !== id);
+    });
+  },
 };

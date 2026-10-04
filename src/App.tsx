@@ -91,11 +91,11 @@ function Header() {
         )}
         {EDITOR_ENABLED && (
           <div className="modeswitch" role="tablist" aria-label="Mode">
-            <button role="tab" aria-selected={mode === 'read'} className={mode === 'read' ? 'is-on' : ''} onClick={() => setMode('read')}>
-              <Icon name="book" size={16} /> Read
+            <button role="tab" aria-selected={mode === 'read'} aria-label="Read" className={mode === 'read' ? 'is-on' : ''} onClick={() => setMode('read')}>
+              <Icon name="book" size={16} /> <span>Read</span>
             </button>
-            <button role="tab" aria-selected={mode === 'edit'} className={mode === 'edit' ? 'is-on' : ''} onClick={() => setMode('edit')}>
-              <Icon name="pen" size={16} /> Edit
+            <button role="tab" aria-selected={mode === 'edit'} aria-label="Edit" className={mode === 'edit' ? 'is-on' : ''} onClick={() => setMode('edit')}>
+              <Icon name="pen" size={16} /> <span>Edit</span>
             </button>
           </div>
         )}

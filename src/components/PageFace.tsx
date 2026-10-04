@@ -1,4 +1,5 @@
 import { memo, useContext, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import type { CSSProperties } from 'react';
 import type { El, Page, PageBackground, PhotoEl } from '../types';
 import { colorCss } from '../theme';
@@ -172,10 +173,25 @@ const ElementBox = memo(function ElementBox({
 }) {
   const scale = useContext(ScaleContext);
 
+  /** Start typing on text-like items, or swap the picture on photos. */
+  const activate = async () => {
+    if (TEXTY.has(el.type)) {
+      // flushSync so focus() runs inside the user gesture — iOS only opens the keyboard then
+      flushSync(() => useStore.getState().setEditing(el.id));
+    } else if (el.type === 'photo') {
+      const file = await pickFile();
+      if (!file) return;
+      const src = await fileToCompressedDataUrl(file);
+      actions.updateEl(pageId, el.id, { src } as Partial<PhotoEl>);
+    }
+  };
+
   const onPointerDown = (e: React.PointerEvent) => {
     if (!interactive || editing || e.button !== 0) return;
     e.stopPropagation();
     const st = useStore.getState();
+    // touch screens rarely send double-clicks: a second tap on a selected item opens it instead
+    const tapToOpen = selected && e.pointerType !== 'mouse' && !el.locked;
     st.select({ pageId, elId: el.id });
     if (el.locked) return;
     const { x: x0, y: y0 } = el;
@@ -196,21 +212,17 @@ const ElementBox = memo(function ElementBox({
         setGuides({ v, h });
         actions.updateEl(pageId, el.id, { x: Math.round(x), y: Math.round(y) }, true);
       },
-      onEnd: () => setGuides({ v: false, h: false }),
+      onEnd: (moved) => {
+        setGuides({ v: false, h: false });
+        if (!moved && tapToOpen) void activate();
+      },
     });
   };
 
-  const onDoubleClick = async (e: React.MouseEvent) => {
+  const onDoubleClick = (e: React.MouseEvent) => {
     if (!interactive || el.locked) return;
     e.stopPropagation();
-    if (TEXTY.has(el.type)) {
-      useStore.getState().setEditing(el.id);
-    } else if (el.type === 'photo') {
-      const file = await pickFile();
-      if (!file) return;
-      const src = await fileToCompressedDataUrl(file);
-      actions.updateEl(pageId, el.id, { src } as Partial<PhotoEl>);
-    }
+    void activate();
   };
 
   return (

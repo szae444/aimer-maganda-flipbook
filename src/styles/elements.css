@@ -362,6 +362,8 @@
 
 .page.is-interactive .el {
   cursor: grab;
+  /* finger drags move the item instead of scrolling or zooming */
+  touch-action: none;
 }
 
 .page.is-interactive .el:hover:not(.is-selected):not(.is-editing) {

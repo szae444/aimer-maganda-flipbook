@@ -1004,6 +1004,72 @@ button.swatch:hover {
   display: block;
 }
 
+/* ---------------- touch ---------------- */
+
+.xf__handle,
+.xf__rotate,
+.dogear {
+  touch-action: none;
+}
+
+@media (pointer: coarse) {
+  /* finger-sized handles with a generous invisible hit area, pushed outward so they
+     never cover a small item's body (dragging the item itself must keep working) */
+  .xf__handle::after,
+  .xf__rotate::after {
+    content: '';
+    position: absolute;
+    inset: calc(-10px * var(--s, 1));
+    border-radius: 50%;
+  }
+
+  .xf__handle {
+    width: calc(16px * var(--s, 1));
+    height: calc(16px * var(--s, 1));
+    border-radius: 50%;
+    --out: calc(2px + 12px * var(--s, 1));
+  }
+
+  .xf__handle--nw {
+    left: calc(0px - var(--out));
+    top: calc(0px - var(--out));
+  }
+  .xf__handle--ne {
+    left: calc(100% + var(--out));
+    top: calc(0px - var(--out));
+  }
+  .xf__handle--se {
+    left: calc(100% + var(--out));
+    top: calc(100% + var(--out));
+  }
+  .xf__handle--sw {
+    left: calc(0px - var(--out));
+    top: calc(100% + var(--out));
+  }
+
+  .xf__rotate {
+    width: calc(22px * var(--s, 1));
+    height: calc(22px * var(--s, 1));
+    translate: -50% calc(-40px * var(--s, 1));
+  }
+
+  .xf__stem {
+    height: calc(36px * var(--s, 1));
+  }
+
+  /* iOS zooms the page into any field under 16px */
+  .ui-input,
+  .ui-textarea,
+  .ui-number input {
+    font-size: 16px;
+  }
+
+  .dogear {
+    width: 84px;
+    height: 84px;
+  }
+}
+
 /* ---------------- small screens ---------------- */
 
 @media (max-width: 900px) {

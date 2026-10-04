@@ -94,6 +94,19 @@ export function Book() {
     [W, H],
   );
 
+  /*
+   * Style writes go through a cache so each frame only touches what actually changed:
+   * a turn moves one leaf, and the other leaves stay untouched (no style recalc for them).
+   */
+  const styleCache = useRef(new WeakMap<HTMLElement, Record<string, string>>());
+  const write = (el: HTMLElement, key: string, value: string, set: (v: string) => void) => {
+    let c = styleCache.current.get(el);
+    if (!c) styleCache.current.set(el, (c = {}));
+    if (c[key] === value) return;
+    c[key] = value;
+    set(value);
+  };
+
   const resetSoft = (leaf: HTMLDivElement) => {
     if (leaf.dataset.mode !== 'soft') return;
     delete leaf.dataset.mode;
@@ -104,8 +117,7 @@ export function Book() {
   };
 
   const hideShading = () => {
-    if (shadeRef.current) shadeRef.current.style.display = 'none';
-    if (castRef.current) castRef.current.style.display = 'none';
+    for (const el of [shadeRef.current, castRef.current]) if (el) write(el, 'display', 'none', (v) => (el.style.display = v));
   };
 
   /** Returns false when the corner is at rest (nothing to fold). */
@@ -115,8 +127,8 @@ export function Book() {
       if (!fold) return false;
       const [front, back] = leaf.children as unknown as HTMLElement[];
       leaf.dataset.mode = 'soft';
-      leaf.style.transform = 'none';
-      leaf.style.setProperty('--lift', '0');
+      write(leaf, 'transform', 'none', (v) => (leaf.style.transform = v));
+      write(leaf, 'lift', '0', (v) => leaf.style.setProperty('--lift', v));
       front.style.clipPath = polygon(fold.stay);
       back.style.transform = fold.matrix;
       back.style.clipPath = polygon(fold.backClip);
@@ -129,7 +141,8 @@ export function Book() {
       const cast = castRef.current;
       if (shade && cast) {
         const neg = { x: -fold.n.x, y: -fold.n.y };
-        shade.style.display = 'block';
+        write(shade, 'display', 'block', (v) => (shade.style.display = v));
+        write(cast, 'display', 'block', (v) => (cast.style.display = v));
         shade.style.clipPath = polygon(fold.folded, W);
         shade.style.background = gradientFrom(neg, Mb, 2 * W, H, W, H / 2, [
           [0, `rgba(0,0,0,${(0.3 * k).toFixed(3)})`],
@@ -138,7 +151,6 @@ export function Book() {
           [D * 0.5, `rgba(255,255,255,0)`],
           [D, `rgba(0,0,0,${(0.14 * k).toFixed(3)})`],
         ]);
-        cast.style.display = 'block';
         cast.style.clipPath = polygon(fold.lifted, W);
         cast.style.background = gradientFrom(fold.n, Mb, 2 * W, H, W, H / 2, [
           [0, `rgba(0,0,0,${(0.5 * k).toFixed(3)})`],
@@ -171,13 +183,14 @@ export function Book() {
         }
         if (!soft) {
           resetSoft(leaf);
-          const lift = Math.sin(p * Math.PI);
-          leaf.style.transform = `perspective(${W * 5}px) rotateY(${-180 * p}deg)`;
-          leaf.style.setProperty('--lift', lift.toFixed(3));
+          write(leaf, 'transform', `perspective(${W * 5}px) rotateY(${(-180 * p).toFixed(2)}deg)`, (v) => (leaf.style.transform = v));
+          write(leaf, 'lift', Math.sin(p * Math.PI).toFixed(3), (v) => leaf.style.setProperty('--lift', v));
         }
-        leaf.style.zIndex = String(moving ? L + 2 : p >= 0.5 ? i + 1 : L - i);
-        leaf.style.setProperty('--p', p.toFixed(3));
-        leaf.dataset.side = p >= 0.5 ? 'left' : 'right';
+        write(leaf, 'z', String(moving ? L + 2 : p >= 0.5 ? i + 1 : L - i), (v) => (leaf.style.zIndex = v));
+        write(leaf, 'p', p.toFixed(3), (v) => leaf.style.setProperty('--p', v));
+        write(leaf, 'side', p >= 0.5 ? 'left' : 'right', (v) => (leaf.dataset.side = v));
+        // only moving leaves get their own GPU layers — cheap on memory-tight phones
+        write(leaf, 'moving', moving ? '1' : '', (v) => leaf.classList.toggle('is-moving', !!v));
       }
       if (!folding) hideShading();
 
@@ -189,7 +202,7 @@ export function Book() {
           if (pos < 1) offset = (-W / 2) * (1 - pos);
           else if (pos > L - 1) offset = (W / 2) * (pos - (L - 1));
         }
-        book.style.setProperty('--open-x', `${offset}px`);
+        write(book, 'open', `${offset.toFixed(2)}px`, (v) => book.style.setProperty('--open-x', v));
       }
     },
     [L, W, H, narrow, applySoft, cornerAt, fracFromC],
@@ -400,6 +413,8 @@ export function Book() {
     let lastTime = performance.now();
     let vx = 0;
     let dragged = false;
+    let rustled = false;
+    let lastClientX = e.clientX;
     try {
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     } catch {
@@ -409,22 +424,34 @@ export function Book() {
     const move = (ev: PointerEvent) => {
       const p = toLeaf(ev.clientX, ev.clientY);
       if (!dragged && Math.hypot(p.x - p0.x, p.y - p0.y) * scaleRef.current < 6) return;
-      if (!dragged && useStore.getState().book.theme.flipSound) playFlip(0.35);
       dragged = true;
+      lastClientX = ev.clientX;
       const now = performance.now();
       vx = (p.x - lastX) / Math.max(1, now - lastTime);
       lastX = p.x;
       lastTime = now;
       if (soft) {
-        const C = constrainCorner(A, { x: startC.x + p.x - p0.x, y: startC.y + p.y - p0.y }, W, H);
+        let C = { x: startC.x + p.x - p0.x, y: startC.y + p.y - p0.y };
+        // pulling the page away from the spine (or straight up/down) doesn't fold anything
+        const rest = { x: forward ? W : -W, y: A.y };
+        if (forward ? C.x > W - 1 : C.x < -W + 1) C = rest;
+        C = constrainCorner(A, C, W, H);
         cornerRef.current = { leaf, A, C };
         posRef.current = leaf + fracFromC(C);
+        if (!rustled && C !== rest && useStore.getState().book.theme.flipSound) {
+          rustled = true;
+          playFlip(0.35);
+        }
       } else {
         // boards swing around the spine; the outer edge tracks the pointer
         const rel = clamp(p.x / W, -1, 1);
         const rel0 = clamp(p0.x / W, -1, 1);
         const frac = forward ? clamp((rel0 - rel) / (rel0 + 1), 0, 1) : 1 - clamp((rel - rel0) / (1 - rel0), 0, 1);
         posRef.current = leaf + frac;
+        if (!rustled && frac > 0.01 && useStore.getState().book.theme.flipSound) {
+          rustled = true;
+          playFlip(0.35);
+        }
       }
       apply(posRef.current);
     };
@@ -455,6 +482,17 @@ export function Book() {
         return;
       }
       const f = posRef.current - leaf;
+      // Phones show one page: a swipe that can't fold this page means "go to the other half of the spread".
+      const swipe = lastClientX - e.clientX;
+      if (narrow && ((forward && f < 0.03 && swipe > 40) || (!forward && f > 0.97 && swipe < -40))) {
+        cornerRef.current = null;
+        busyRef.current = false;
+        apply(startPos);
+        setWindowAt(t);
+        if (forward) prev();
+        else next();
+        return;
+      }
       const flick = Math.abs(vx) > 0.35;
       const turnedOver = flick ? vx < 0 : forward ? f > 0.35 : f > 0.65;
       const settle = leaf + (turnedOver ? 1 : 0);
@@ -488,7 +526,18 @@ export function Book() {
 
   return (
     <ScaleContext.Provider value={scaleRef}>
-      <div ref={stageRef} className={`stage${narrow ? ' is-narrow' : ''}`} style={stageStyle}>
+      <div
+        ref={stageRef}
+        className={`stage${narrow ? ' is-narrow' : ''}`}
+        style={stageStyle}
+        onClick={(e) => {
+          // taps on the empty desk beside the book turn pages too (handy on phones)
+          if (mode !== 'read' || (e.target as HTMLElement).closest('.book')) return;
+          const r = stageRef.current!.getBoundingClientRect();
+          if (e.clientX > r.left + r.width / 2) next();
+          else prev();
+        }}
+      >
         <div className="stage__pan">
           <div
             ref={bookRef}

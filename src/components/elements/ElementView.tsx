@@ -114,6 +114,8 @@ function TextView({ el, editing, onCommit }: { el: TextEl; editing: boolean; onC
   );
 }
 
+const TOUCH = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+
 const PHOTO_FILTERS: Record<PhotoEl['filter'], string> = {
   none: 'none',
   mono: 'grayscale(1) contrast(1.08) brightness(1.03)',
@@ -136,7 +138,7 @@ function PhotoView({ el, editable }: { el: PhotoEl; editable: boolean }) {
           />
         ) : (
           <div className="el-photo__empty">
-            <span>{editable ? 'double-click\nto add a photo' : ''}</span>
+            <span>{editable ? `${TOUCH ? 'double-tap' : 'double-click'}\nto add a photo` : ''}</span>
           </div>
         )}
       </div>

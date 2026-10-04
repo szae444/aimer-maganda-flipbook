@@ -1,0 +1,345 @@
+/* ==================================================================
+   The book: stage, leaves, page faces, lighting
+   ================================================================== */
+
+.stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.stage__pan {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateX(calc(var(--pan) * var(--scale)));
+  transition: transform 0.7s var(--ease);
+}
+
+.book {
+  position: relative;
+  flex: none;
+  transform: scale(var(--scale)) translateX(var(--open-x, 0px));
+  transform-origin: center center;
+  user-select: none;
+  -webkit-user-select: none;
+  animation: book-in 1.1s var(--ease) both;
+}
+
+.book.mode-read {
+  cursor: grab;
+}
+
+.book.mode-read:active {
+  cursor: grabbing;
+}
+
+@keyframes book-in {
+  from {
+    opacity: 0;
+    transform: scale(var(--scale)) translateX(var(--open-x, 0px)) translateY(30px) rotate(-1.5deg);
+  }
+}
+
+/* soft contact shadow on the desk — only under visible halves */
+.book__shadow {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-radius: 4px;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.25), 0 24px 48px -12px rgba(0, 0, 0, 0.55), 0 60px 90px -40px rgba(0, 0, 0, 0.5);
+  transition: left 0.5s var(--ease), right 0.5s var(--ease);
+}
+
+.is-closed-front .book__shadow {
+  left: 50%;
+}
+
+.is-closed-back .book__shadow {
+  right: 50%;
+}
+
+/* page-edge thickness, grows with pages on each side */
+.book__stack {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  background: repeating-linear-gradient(90deg, var(--c-paper) 0 1px, color-mix(in srgb, var(--c-paper) 70%, #000) 1px 1.6px);
+  border-radius: 2px;
+}
+
+.book__stack--left {
+  right: 100%;
+  width: calc(var(--stack-l) * 1.4px);
+  border-radius: 3px 0 0 3px;
+}
+
+.book__stack--right {
+  left: 100%;
+  width: calc(var(--stack-r) * 1.4px);
+  border-radius: 0 3px 3px 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Leaves                                                              */
+/* ------------------------------------------------------------------ */
+
+.leaf {
+  position: absolute;
+  top: 0;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.leaf__face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+  box-shadow: 0 0 calc(var(--lift, 0) * 36px) rgba(0, 0, 0, calc(var(--lift, 0) * 0.3));
+}
+
+.leaf__face--back {
+  transform: rotateY(180deg);
+}
+
+/* the face pointing away from us must not catch clicks */
+.leaf[data-side='left'] .leaf__face--front,
+.leaf[data-side='right'] .leaf__face--back {
+  pointer-events: none;
+}
+
+/* lighting while turning */
+.leaf__shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.leaf__face--front .leaf__shade {
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, calc(var(--p, 0) * 0.42)),
+    rgba(0, 0, 0, calc(var(--p, 0) * 0.12)) 35%,
+    rgba(255, 255, 255, calc(var(--lift, 0) * 0.14)) 70%,
+    rgba(0, 0, 0, calc(var(--lift, 0) * 0.1))
+  );
+}
+
+.leaf__face--back .leaf__shade {
+  background: linear-gradient(
+    to left,
+    rgba(0, 0, 0, calc((1 - var(--p, 1)) * 0.42)),
+    rgba(0, 0, 0, calc((1 - var(--p, 1)) * 0.12)) 35%,
+    rgba(255, 255, 255, calc(var(--lift, 0) * 0.14)) 70%,
+    rgba(0, 0, 0, calc(var(--lift, 0) * 0.1))
+  );
+}
+
+/* soft paper fold: flat 2D geometry instead of a 3D swing (see lib/fold.ts) */
+.leaf[data-mode='soft'] {
+  transform-style: flat;
+}
+
+.leaf[data-mode='soft'] .leaf__face {
+  backface-visibility: visible;
+  -webkit-backface-visibility: visible;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.leaf[data-mode='soft'] .leaf__face--back {
+  transform-origin: 0 0;
+}
+
+.leaf[data-mode='soft'] .leaf__shade {
+  display: none;
+}
+
+.fold-light {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(var(--page-w) * 2);
+  height: var(--page-h);
+  pointer-events: none;
+  display: none;
+}
+
+.fold-light--cast {
+  mix-blend-mode: multiply;
+}
+
+/* ------------------------------------------------------------------ */
+/* Pages                                                               */
+/* ------------------------------------------------------------------ */
+
+.page {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  width: var(--page-w);
+  height: var(--page-h);
+  color: var(--c-ink);
+  contain: layout paint;
+}
+
+.thumb .page {
+  position: relative;
+}
+
+.page--right {
+  border-radius: 0 3px 3px 0;
+}
+
+.page--left {
+  border-radius: 3px 0 0 3px;
+}
+
+.page__grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 8;
+  opacity: var(--grain);
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .28 0 0 0 0 .2 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(80, 55, 30, 0.14));
+}
+
+.page__gutter {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9;
+}
+
+.page--right .page__gutter {
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.07) 3%, rgba(0, 0, 0, 0.02) 9%, transparent 16%);
+}
+
+.page--left .page__gutter {
+  background: linear-gradient(to left, rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.07) 3%, rgba(0, 0, 0, 0.02) 9%, transparent 16%);
+}
+
+/* hard cover: board edge + hinge groove */
+.page.role-cover {
+  border-radius: 0 6px 6px 0;
+}
+
+.page.role-cover.page--left {
+  border-radius: 6px 0 0 6px;
+}
+
+.page.role-cover .page__gutter {
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.35),
+    rgba(0, 0, 0, 0.05) 2%,
+    transparent 4%,
+    rgba(0, 0, 0, 0.22) 4.4%,
+    rgba(255, 255, 255, 0.1) 5%,
+    transparent 6.5%
+  );
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), inset 0 0 24px rgba(0, 0, 0, 0.25);
+}
+
+.page.role-cover.page--left .page__gutter {
+  transform: scaleX(-1);
+}
+
+.folio {
+  position: absolute;
+  bottom: 18px;
+  z-index: 7;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--c-muted);
+  pointer-events: none;
+}
+
+.folio--right {
+  right: 24px;
+}
+
+.folio--left {
+  left: 24px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Dog-ear corners — grab to turn                                      */
+/* ------------------------------------------------------------------ */
+
+.dogear {
+  position: absolute;
+  bottom: 0;
+  width: 64px;
+  height: 64px;
+  z-index: 11;
+  cursor: grab;
+}
+
+.dogear--right {
+  right: 0;
+}
+
+.dogear--left {
+  left: 0;
+}
+
+.dogear::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  width: var(--curl, 0px);
+  height: var(--curl, 0px);
+  transition: width 0.35s var(--ease), height 0.35s var(--ease);
+  filter: drop-shadow(-3px -3px 4px rgba(0, 0, 0, 0.25));
+}
+
+.dogear--right::before {
+  right: 0;
+  background: linear-gradient(315deg, transparent 50%, color-mix(in srgb, var(--c-paper) 82%, #000) 50%, var(--c-paper) 75%, color-mix(in srgb, var(--c-paper) 92%, #000));
+  border-top-left-radius: 2px;
+}
+
+.dogear--left::before {
+  left: 0;
+  background: linear-gradient(45deg, transparent 50%, color-mix(in srgb, var(--c-paper) 82%, #000) 50%, var(--c-paper) 75%, color-mix(in srgb, var(--c-paper) 92%, #000));
+  border-top-right-radius: 2px;
+}
+
+.mode-edit .dogear {
+  --curl: 18px;
+}
+
+.dogear:hover {
+  --curl: 46px;
+}
+
+/* in reading mode paper pages lift for real on hover, so the painted curl is only for covers */
+.mode-read .leaf:not(.is-hard) .dogear::before {
+  display: none;
+}
+
+/* the very first and last faces have nothing to turn to */
+.is-closed-front .leaf__face--back .dogear,
+.is-closed-back .leaf__face--front .dogear {
+  display: none;
+}
+
+@media (hover: none) {
+  .dogear {
+    --curl: 14px;
+  }
+}

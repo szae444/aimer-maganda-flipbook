@@ -65,8 +65,11 @@ body {
   touch-action: manipulation;
   overflow: hidden;
   overscroll-behavior: none;
-  position: fixed;
-  inset: 0;
+}
+
+html {
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body.is-dragging,

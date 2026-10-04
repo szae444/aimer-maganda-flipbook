@@ -6,6 +6,8 @@ interface Props {
   fill: string;
   ink: string;
   text: string;
+  /** Draw a white die-cut border behind the shape (a plain stroke — far cheaper than filters on phones). */
+  diecut?: boolean;
 }
 
 /** Stroke-only stickers stretch freely; filled ones keep their proportions. */
@@ -45,7 +47,7 @@ const burstPoints = (() => {
   return pts.join(' ');
 })();
 
-export function StickerSvg({ kind, fill, ink, text }: Props) {
+export function StickerSvg({ kind, fill, ink, text, diecut = false }: Props) {
   const uid = useId().replace(/:/g, '');
   const stretch = STRETCHY.includes(kind);
   const line = { fill: 'none', stroke: fill, strokeLinecap: 'round', strokeLinejoin: 'round', vectorEffect: 'non-scaling-stroke' } as const;
@@ -226,8 +228,11 @@ export function StickerSvg({ kind, fill, ink, text }: Props) {
       break;
   }
 
+  // the postmark carries its own <defs>, which must not be duplicated
+  const cutBorder = diecut && kind !== 'postmark';
   return (
     <svg viewBox="0 0 100 100" preserveAspectRatio={stretch ? 'none' : 'xMidYMid meet'} width="100%" height="100%" overflow="visible" aria-hidden>
+      {cutBorder && <g className="sticker-outline">{body}</g>}
       {body}
     </svg>
   );

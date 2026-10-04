@@ -24,13 +24,14 @@
 .book {
   position: relative;
   flex: none;
-  transform: scale(var(--scale)) translateX(var(--open-x, 0px));
+  /* scale + opening slide are written by Book.tsx as one transform (no per-frame CSS variables) */
   transform-origin: center center;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   touch-action: pinch-zoom;
-  animation: book-in 1.1s var(--ease) both;
+  /* individual translate/rotate compose with the inline transform */
+  animation: book-in 1.1s var(--ease) backwards;
 }
 
 .book.mode-read {
@@ -44,28 +45,34 @@
 @keyframes book-in {
   from {
     opacity: 0;
-    transform: scale(var(--scale)) translateX(var(--open-x, 0px)) translateY(30px) rotate(-1.5deg);
+    translate: 0 30px;
+    rotate: -1.5deg;
   }
 }
 
-/* soft contact shadow on the desk — only under visible halves */
+/* soft contact shadow on the desk — one per half, faded (not resized) so it never repaints */
 .book__shadow {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 0;
-  right: 0;
-  border-radius: 4px;
+  width: 50%;
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.25), 0 24px 48px -12px rgba(0, 0, 0, 0.55), 0 60px 90px -40px rgba(0, 0, 0, 0.5);
-  transition: left 0.5s var(--ease), right 0.5s var(--ease);
+  transition: opacity 0.5s var(--ease);
 }
 
-.is-closed-front .book__shadow {
-  left: 50%;
+.book__shadow--left {
+  left: 0;
+  border-radius: 4px 0 0 4px;
 }
 
-.is-closed-back .book__shadow {
-  right: 50%;
+.book__shadow--right {
+  right: 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.is-closed-front .book__shadow--left,
+.is-closed-back .book__shadow--right {
+  opacity: 0;
 }
 
 /* page-edge thickness, grows with pages on each side */
@@ -91,41 +98,15 @@
 
 /* ------------------------------------------------------------------ */
 /* Leaves                                                              */
+/*                                                                     */
+/* Every frame of a turn changes only transform + opacity, which phones */
+/* run on the GPU without repainting anything (see Book.tsx, fold.ts).  */
 /* ------------------------------------------------------------------ */
 
 .leaf {
   position: absolute;
   top: 0;
   transform-origin: left center;
-  transform-style: preserve-3d;
-}
-
-/* Promote only what is moving: each page paints once into its own GPU layer,
-   then the turn just moves/clips layers instead of repainting page content. */
-.leaf.is-moving .page {
-  will-change: transform;
-}
-
-.leaf__face {
-  position: absolute;
-  inset: 0;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-}
-
-/* lift shadow for swinging covers — a fixed shadow faded via opacity (no per-frame blur repaint) */
-.leaf.is-hard .leaf__face::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  box-shadow: 0 0 36px rgba(0, 0, 0, 0.3);
-  opacity: var(--lift, 0);
-}
-
-.leaf__face--back {
-  transform: rotateY(180deg);
 }
 
 /* the face pointing away from us must not catch clicks */
@@ -134,57 +115,125 @@
   pointer-events: none;
 }
 
-/* lighting while turning */
-.leaf__shade {
+/* ---- covers: stiff boards that swing in 3D ---- */
+
+.leaf.is-hard,
+.leaf.is-hard .leaf__clip {
+  transform-style: preserve-3d;
+}
+
+.leaf.is-hard .leaf__clip,
+.leaf.is-hard .leaf__face {
+  position: absolute;
+  inset: 0;
+}
+
+.leaf.is-hard .leaf__face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.leaf.is-hard .leaf__face--back {
+  transform: rotateY(180deg);
+}
+
+.leaf__shade,
+.leaf__lift {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  opacity: 0;
+}
+
+.leaf.is-soft .leaf__shade,
+.leaf.is-soft .leaf__lift {
+  display: none;
+}
+
+.leaf__shade {
   z-index: 10;
 }
 
-/* fixed gradients; only opacity changes per frame, which the GPU handles without repainting */
 .leaf__face--front .leaf__shade {
   background: linear-gradient(to right, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.12) 35%, rgba(255, 255, 255, 0.06) 70%, rgba(0, 0, 0, 0.08));
-  opacity: var(--p, 0);
 }
 
 .leaf__face--back .leaf__shade {
   background: linear-gradient(to left, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.12) 35%, rgba(255, 255, 255, 0.06) 70%, rgba(0, 0, 0, 0.08));
-  opacity: calc(1 - var(--p, 1));
 }
 
-.leaf:not(.is-moving) .leaf__shade {
-  display: none;
+/* lift shadow for swinging covers — painted once, faded by opacity */
+.leaf__lift {
+  z-index: -1;
+  box-shadow: 0 0 36px rgba(0, 0, 0, 0.3);
 }
 
-/* soft paper fold: flat 2D geometry instead of a 3D swing (see lib/fold.ts) */
-.leaf[data-mode='soft'] {
-  transform-style: flat;
-}
+/* ---- paper pages: a crease clip + mirrored back face ---- */
 
-.leaf[data-mode='soft'] .leaf__face {
-  backface-visibility: visible;
-  -webkit-backface-visibility: visible;
-  pointer-events: none;
-}
-
-.leaf[data-mode='soft'] .leaf__face--back {
-  transform-origin: 0 0;
-}
-
-.leaf[data-mode='soft'] .leaf__shade {
-  display: none;
-}
-
-.fold-light {
+.leaf.is-soft .leaf__clip {
   position: absolute;
-  top: 0;
   left: 0;
-  width: calc(var(--page-w) * 2);
-  height: var(--page-h);
+  top: 0;
+  overflow: hidden;
+  transform-origin: 0 0;
   pointer-events: none;
+}
+
+.leaf.is-soft .leaf__face {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--page-w);
+  height: var(--page-h);
+  transform-origin: 0 0;
+  pointer-events: auto;
+}
+
+.leaf.is-soft .leaf__face--back {
+  overflow: hidden;
+}
+
+.leaf.is-soft .leaf__face.is-off {
+  visibility: hidden;
+}
+
+.fold-shade,
+.fold-cast__strip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 256px;
+  height: 256px;
+  transform-origin: 0 0;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.fold-shade {
+  z-index: 12;
+}
+
+/* shadow the lifted page casts on the page underneath */
+.fold-cast {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.leaf.is-hard .fold-cast,
+.leaf.is-hard .fold-shade {
   display: none;
-  will-change: clip-path;
+}
+
+/* faces holding content keep their own GPU layer: painted once while idle, then only moved */
+.leaf__face.is-live {
+  will-change: transform;
+}
+
+/* briefly drop the layers after a resize so they repaint sharp at the new size */
+.stage.relayer .leaf__face.is-live {
+  will-change: auto;
 }
 
 /* ------------------------------------------------------------------ */
@@ -338,6 +387,11 @@
 /* in reading mode paper pages lift for real on hover, so the painted curl is only for covers */
 .mode-read .leaf:not(.is-hard) .dogear::before {
   display: none;
+}
+
+/* the hint curl would ride along on a page that is already turning */
+.leaf[data-moving] .dogear::before {
+  display: none !important;
 }
 
 /* the very first and last faces have nothing to turn to */

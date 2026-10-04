@@ -21,7 +21,7 @@ export const ElementView = memo(function ElementView({ el, editing, editable, on
     case 'sticker':
       return (
         <div className={`el-sticker${el.diecut ? ' is-diecut' : ''}`}>
-          <StickerSvg kind={el.kind} fill={colorCss(el.color)} ink={colorCss(el.color2)} text={el.text} />
+          <StickerSvg kind={el.kind} fill={colorCss(el.color)} ink={colorCss(el.color2)} text={el.text} diecut={el.diecut} />
         </div>
       );
     case 'tape':

@@ -18,7 +18,8 @@
 .el--note,
 .el--ticket,
 .el--label {
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18)) drop-shadow(0 7px 9px rgba(40, 25, 10, 0.22));
+  /* one shadow pass (each extra filter is a full redraw of the element on phones) */
+  filter: drop-shadow(0 4px 6px rgba(40, 25, 10, 0.26));
 }
 
 /* ---------------- text ---------------- */
@@ -195,9 +196,20 @@
   overflow: visible;
 }
 
+/* die-cut border: a white copy of the shape drawn with a fat stroke underneath it */
+.sticker-outline,
+.sticker-outline * {
+  fill: #fff !important;
+  stroke: #fff !important;
+  stroke-width: 7px !important;
+  stroke-opacity: 1 !important;
+  fill-opacity: 1 !important;
+  stroke-linejoin: round !important;
+  stroke-linecap: round !important;
+}
+
 .el-sticker.is-diecut svg {
-  filter: drop-shadow(2.5px 0 0 #fff) drop-shadow(-2.5px 0 0 #fff) drop-shadow(0 2.5px 0 #fff) drop-shadow(0 -2.5px 0 #fff)
-    drop-shadow(0 3px 3px rgba(40, 25, 10, 0.3));
+  filter: drop-shadow(0 2px 2px rgba(40, 25, 10, 0.3));
 }
 
 /* ---------------- washi tape ---------------- */
